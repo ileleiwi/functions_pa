@@ -125,8 +125,6 @@ pullIds <- function(rule_df, string){
 }
 
 
-
-
 #checks rule list against counts dataframe and provides T/F list for given genome: used in evaluateGenome()
 buildLogicList <- function(dataframe, rule_df, rule_list, genome){
   
@@ -500,7 +498,7 @@ truefalseToTF <- function(string){
 #match if 50% marker is present: used in handleSublist() and evaluateFunction()
 check50 <- function(string){
   if(str_detect(string, "percent50")){
-    loc_50 <- unlist(str_match_all(string, "percent50(.+?)[\\|,\\]]|percent50(.+?)$"))
+    loc_50 <- unlist(str_match_all(string, "percent50(.+?)[\\|,\\],&]|percent50(.+?)$"))
     loc_50_1 <- loc_50[!str_detect(loc_50, "percent50")]
     return(loc_50_1[!is.na(loc_50_1)])
   }else{
@@ -511,7 +509,7 @@ check50 <- function(string){
 #match if 1of  marker is present: used in evaluateFunction()
 checkOne <- function(string){
   if(str_detect(string, "1of")){
-    loc_1 <- unlist(str_match_all(string, "1of(.+?)[\\|,\\]]|1of(.*?)$"))
+    loc_1 <- unlist(str_match_all(string, "1of(.+?)[\\|,\\],&]|1of(.*?)$"))
     loc_1_1 <- loc_1[!str_detect(loc_1, "1of")]
     return(loc_1_1[!is.na(loc_1_1)])
   }else{
@@ -522,7 +520,7 @@ checkOne <- function(string){
 #match if 2of  marker is present: used in evaluateFunction()
 checkTwo <- function(string){
   if(str_detect(string, "2of")){
-    loc_2 <- unlist(str_match_all(string, "2of(.+?)[\\|,\\]]|2of(.*?)$"))
+    loc_2 <- unlist(str_match_all(string, "2of(.+?)[\\|,\\],&]|2of(.*?)$"))
     loc_2_1 <- loc_2[!str_detect(loc_2, "2of")]
     return(loc_2_1[!is.na(loc_2_1)])
   }else{
@@ -578,6 +576,7 @@ handleSublist <- function(logic_list){
   return(out_list)
 }
 
+
 #evaluates logic_list returning list of T or F
 evaluateFunction <- function(logic_list){
   out_list <- handleSublist(logic_list) #resolve sublists
@@ -587,7 +586,10 @@ evaluateFunction <- function(logic_list){
     for(element in names(out_list)[which(names(out_list) != "org")]){
       elem_index <- buildIndex(out_list[[element]])
       prir_list <- buildPriorityList(elem_index, out_list[[element]])
-      if(is.logical(unlist(collapsePriority(prir_list)))){
+      if(is.logical(unlist(collapsePriority(prir_list))) &
+         (NA %in% check50(out_list[["org"]])) &
+         (NA %in% checkTwo(out_list[["org"]])) &
+         (NA %in% checkOne(out_list[["org"]]))){
         out_list[element] <- collapsePriority(prir_list)
       }else{
         
@@ -633,9 +635,11 @@ evaluateFunction <- function(logic_list){
           oneOf <- FALSE
         }
         
-        if(oneOf | twoOf){
-          out_list[element] <- working_logic
-        }
+        if(oneOf){out_list[element] <- ifelse(commaCount(unlist(prir_list)) >= 1, TRUE, FALSE)}
+        if(twoOf){out_list[element] <- ifelse(commaCount(unlist(prir_list)) >= 1, TRUE, FALSE)}
+        # if(oneOf | twoOf){
+        #   out_list[element] <- working_logic
+        # }
       }
       out_list <- collapsePriority(out_list)
     }
